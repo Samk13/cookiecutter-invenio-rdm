@@ -1,14 +1,12 @@
+{%- if cookiecutter.python_package_manager == 'uv' %}
 # Dockerfile that builds a fully functional image of your app.
 #
 # This image installs all Python dependencies for your application. It's based
-# on Almalinux (https://github.com/inveniosoftware/docker-invenio)
-# This section includes essential tools and libraries such as Pip, UV / Pipenv, Node.js, NPM / Pnpm,
+# on UV official image (https://github.com/astral-sh/uv/pkgs/container/uv)
+# This section includes essential tools and libraries such as UV Node.js, NPM or Pnpm,
 # and other standard libraries commonly required by Invenio applications.
-#
-# Note: It is important to keep the commands in this file in sync with your
-# bootstrap script located in ./scripts/bootstrap.
 
-
+#------------------------
 # ---- Builder Stage ----
 #------------------------
 
@@ -39,7 +37,7 @@ RUN apk update && \
         npm \
         python3 \
         python3-dev && \
-    npm install --global --ignore-scripts pnpm && \
+{%- if cookiecutter.javascript_package_manager == 'pnpm' %}npm install --global --ignore-scripts pnpm && \{% endif %}
     rm -rf /var/cache/apk/*
 
 # Create the instance directory and set it as working directory
@@ -73,18 +71,22 @@ COPY ./assets/ /tmp/assets/
 COPY ./static/ /tmp/static/
 COPY ./templates/ /tmp/templates/
 
+{%- if cookiecutter.javascript_package_manager == 'pnpm' %}
 # Set environment variable for pnpm usage by Invenio-Cli/Webpack
 ENV INVENIO_WEBPACKEXT_NPM_PKG_CLS=pynpm:PNPMPackage
+{%- else %}
+# Set environment variable for npm usage by Invenio-Cli/Webpack
+ENV INVENIO_WEBPACKEXT_NPM_PKG_CLS=pynpm:NPMPackage
+{%- endif %}
+
 
 # Build frontend assets
 RUN set -e && \
     echo ">>> Running invenio collect..." && \
     invenio collect --verbose && \
-    \
     mkdir -p ${INVENIO_INSTANCE_PATH}/assets \
                 ${INVENIO_INSTANCE_PATH}/templates \
                 ${INVENIO_INSTANCE_PATH}/translations && \
-    \
     echo ">>> Copying local assets OVER collected assets for build..." && \
     cp -a /tmp/assets/. ${INVENIO_INSTANCE_PATH}/assets/ && \
     \
@@ -102,10 +104,15 @@ RUN set -e && \
     \
     echo ">>> Cleaning up node_modules and caches..." && \
     rm -rf ${INVENIO_INSTANCE_PATH}/assets/node_modules && \
+    {%- if cookiecutter.javascript_package_manager == 'pnpm' %}
     pnpm store prune && \
+    {%- else %}
+    npm cache clean --force \
+    {%- endif %}
     rm -rf /tmp/*
 
 
+#------------------------
 # ---- Runtime Stage ----
 #------------------------
 
@@ -150,3 +157,36 @@ RUN chmod -R g+w "${INVENIO_INSTANCE_PATH}" && \
 EXPOSE 5000
 
 ENTRYPOINT ["bash", "-c"]
+
+{%- else -%}
+# Dockerfile that builds a fully functional image of your app.
+#
+# This image installs all Python dependencies for your application. It's based
+# on Almalinux (https://github.com/inveniosoftware/docker-invenio)
+# and includes Pip, Pipenv, Node.js, NPM and some few standard libraries
+# Invenio usually needs.
+
+
+FROM registry.cern.ch/inveniosoftware/almalinux:1
+
+COPY site ./site
+COPY Pipfile Pipfile.lock ./
+RUN pipenv install --deploy --system
+
+COPY ./docker/uwsgi/ ${INVENIO_INSTANCE_PATH}
+COPY ./invenio.cfg ${INVENIO_INSTANCE_PATH}
+COPY ./templates/ ${INVENIO_INSTANCE_PATH}/templates/
+COPY ./app_data/ ${INVENIO_INSTANCE_PATH}/app_data/
+COPY ./translations/ ${INVENIO_INSTANCE_PATH}/translations/
+COPY ./ .
+
+RUN cp -r ./static/. ${INVENIO_INSTANCE_PATH}/static/ && \
+    cp -r ./assets/. ${INVENIO_INSTANCE_PATH}/assets/ && \
+    invenio collect --verbose  && \
+    invenio webpack buildall
+
+ENTRYPOINT [ "bash", "-c"]
+
+# TODO: create variants for pipenv and pnpm
+{% endif %}
+
