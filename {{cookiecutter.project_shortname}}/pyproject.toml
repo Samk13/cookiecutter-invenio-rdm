@@ -9,7 +9,7 @@
   {%- set app_rdm_extras = app_rdm_extras + ['s3'] -%}
 {%- endif -%}
 {%- if cookiecutter.site_code == 'yes' -%}
-  {%- set site_dist_name = cookiecutter.package_name + '-package' -%}
+  {%- set site_dist_name = cookiecutter.package_name + '_package' -%}
 {%- endif -%}
 
 [project]
