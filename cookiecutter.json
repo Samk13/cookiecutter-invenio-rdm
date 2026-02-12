@@ -16,9 +16,6 @@
     "local",
     "S3"
   ],
-    "javascript_package_manager": [
-    "pnpm"
-  ],
   "development_tools": [
     "yes",
     "no"
