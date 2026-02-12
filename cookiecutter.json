@@ -9,9 +9,6 @@
   "database": [
     "postgresql"
   ],
-  "search": [
-    "opensearch2"
-  ],
   "file_storage": [
     "local",
     "S3"
