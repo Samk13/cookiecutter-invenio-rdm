@@ -12,7 +12,7 @@
 # - DB: PostgreSQL (exposed port: 5432)
 # - Message queue: RabbitMQ (exposed ports: 5672, 15672)
 # - OpenSearch (exposed ports: 9200, 9600)
-# - Kibana (view ES indexes) (exposed ports: 5601)
+# - Kibana (view OS indexes) (exposed ports: 5601)
 #
 services:
   cache:
